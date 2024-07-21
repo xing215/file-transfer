@@ -9,6 +9,7 @@ class Server:
         Server.IP = socket.gethostbyname(socket.gethostname())
         Server.PORT = SERVER_PORT
         Server.MSG_SIZE = 1024
+        Server.DEFAULT_PATH = "server_data/"
 
         Server.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         Server.server_socket.bind((Server.IP, Server.PORT))
@@ -16,6 +17,8 @@ class Server:
         print(f"Server.__init__ @ \tOK @\tServer is listening on {Server.IP}:{Server.PORT}.")
     def upload(conn : socket, filepath : str) -> bool:
         conn.send(f"OK@SND@Waiting for file...".encode())
+        if (not '/' in filepath or not '\\' in filepath):
+            filepath = Server.DEFAULT_PATH + filepath
         if (file_transfer.receive(conn, filepath)):
             print(f"Server.upload @\tOK @\File received")
             return True
@@ -24,6 +27,8 @@ class Server:
             return False
     def download(conn : socket, filepath : str) -> bool:
         conn.send(f"OK@DWN@Sending file...".encode())
+        if (not '/' in filepath or not '\\' in filepath):
+            filepath = Server.DEFAULT_PATH + filepath
         if (file_transfer.send(conn, filepath)):
             print(f"Server.download @\tOK @\File sent")
             return True

@@ -9,6 +9,7 @@ class Client:
         # Client.SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
         Client.BUFFER_SIZE = BUFFER_SIZE
         Client.MSG_SIZE = 1024
+        Client.DEFAULT_PATH = "client_data/"
 
         Client.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -22,6 +23,8 @@ class Client:
     def upload(filepath : str) -> bool:
         # print(f'Client.upload @\tCALL @\tFunction called.')
         Client.client_socket.send(f'REQ@SND@{filepath}'.encode())
+        if (not '/' in filepath or not '\\' in filepath):
+            filepath = Client.DEFAULT_PATH + filepath
         msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split('@')
         if (msg[0] == 'OK' and msg[1] == 'SND'):
             print(f"Client.upload @\tOK @\tFile sending...")
@@ -41,6 +44,8 @@ class Client:
     def download(filepath : str) -> bool:
         print(f'Client.download @\tCALL @\tFunction called.')
         Client.client_socket.send(f'REQ@DWN@{filepath}'.encode())
+        if (not '/' in filepath or not '\\' in filepath):
+            filepath = Client.DEFAULT_PATH + filepath
         msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split('@')
         if (msg[0] == 'OK' and msg[1] == 'DWN'):
             print(f"Client.download @\tOK @\tFile downloading...")
