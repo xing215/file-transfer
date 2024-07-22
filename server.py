@@ -37,6 +37,9 @@ class Server:
             return False
 
     def delete(conn: socket, filepath : str) -> bool:
+        if (not '/' in filepath or not '\\' in filepath):
+            filepath = Server.DEFAULT_PATH + filepath
+
         if (not os.path.isfile(filepath)):
             print(f"Server.delete @\tERR @\tFile not found!")
             conn.send(f"ERR@DEL@\"{filepath}\" not found!".encode())
