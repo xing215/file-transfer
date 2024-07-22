@@ -22,6 +22,7 @@ def send(send_socket: socket.socket, filepath: str, BUFFER_SIZE: int = 1048576) 
             print(f"Sending part {i}: {part_filepath}")
             part_size = os.path.getsize(part_filepath)
             send_socket.send(str(part_size).encode())
+            # os.remove(part_filepath) # khong dc de day
             ack = send_socket.recv(1024).decode()
             if ack != "ACK":
                 print(f"Error: Acknowledgment not received for part size {i}.")
@@ -72,7 +73,12 @@ def receive(receive_socket: socket.socket, filepath: str) -> bool:
 
         # Merge the parts into the final file
         print(f"Merging {part_num} parts into {filepath}")
-        if not file_splitter.merge_file(filepath, part_num):
+        merge_success = file_splitter.merge_file(filepath, part_num)
+        for i in range(part_num):
+            part_filepath = f"{filepath}.part{i}"
+            os.remove(part_filepath)
+        
+        if not merge_success:
             print("Error: Merging file parts failed.")
             return False
 
