@@ -19,7 +19,7 @@ class Server:
         conn.send(f"OK@SND@Waiting for file...".encode())
         if (not '/' in filepath or not '\\' in filepath):
             filepath = Server.DEFAULT_PATH + filepath
-        if (file_transfer.receive(conn, filepath)):
+        if (file_transfer.receive(conn, filepath, Server.BUFFER_SIZE)):
             print(f"Server.upload @\tOK @\File received")
             return True
         else:
