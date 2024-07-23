@@ -1,88 +1,71 @@
 import socket
-import os
-import file_splitter
+import threading
+from file_splitter import split_file, merge_file
 
-def send(send_socket: socket.socket, filepath: str, BUFFER_SIZE: int = 1048576) -> bool:
+def download_part(part_filepath: str, receive_socket: socket.socket, buffer_size: int):
+    with open(part_filepath, 'wb') as part_file:
+        while True:
+            data = receive_socket.recv(buffer_size)
+            if not data:
+                break
+            part_file.write(data)
+
+def upload_part(part_filepath: str, send_socket: socket.socket, buffer_size: int):
+    with open(part_filepath, 'rb') as part_file:
+        while True:
+            data = part_file.read(buffer_size)
+            if not data:
+                break
+            send_socket.sendall(data)
+
+def send(filepath: str, send_socket: socket.socket, buffer_size: int) -> bool:
     try:
-        # Split the file into chunks
-        print(f"Splitting file: {filepath}")
-        part_num = file_splitter.split_file(filepath, BUFFER_SIZE)
-        print(f"File split into {part_num} parts.")
+        # Split file and get number of parts
+        part_num = split_file(filepath)
+        send_socket.sendall(f"{part_num}".encode())
 
-        # Send the number of parts
-        send_socket.send(str(part_num).encode())
-        ack = send_socket.recv(1024).decode()
-        if ack != "ACK":
-            print("Error: Acknowledgment not received for part number.")
-            return False
+        def upload_thread(part_filepath: str):
+            try:
+                upload_part(part_filepath, send_socket, buffer_size)
+            except Exception as e:
+                print(f"Error uploading part {part_filepath}: {e}")
 
-        # Send each part
+        threads = []
         for i in range(part_num):
             part_filepath = f"{filepath}.part{i}"
-            print(f"Sending part {i}: {part_filepath}")
-            part_size = os.path.getsize(part_filepath)
-            send_socket.send(str(part_size).encode())
-            # os.remove(part_filepath) # khong dc de day
-            ack = send_socket.recv(1024).decode()
-            if ack != "ACK":
-                print(f"Error: Acknowledgment not received for part size {i}.")
-                return False
+            thread = threading.Thread(target=upload_thread, args=(part_filepath,))
+            thread.start()
+            threads.append(thread)
 
-            with open(part_filepath, 'rb') as part_file:
-                while True:
-                    data = part_file.read(BUFFER_SIZE)
-                    if not data:
-                        break
-                    send_socket.sendall(data)
-            # Wait for the acknowledgment for each part
-            ack = send_socket.recv(1024).decode()
-            if ack != "ACK":
-                print(f"Error: Acknowledgment not received for part {i}.")
-                return False
-
+        for thread in threads:
+            thread.join()        
         return True
     except Exception as e:
-        print(f"Error during send: {e}")
+        print(f"Error in sending file: {e}")
         return False
 
 
-def receive(receive_socket: socket.socket, filepath: str) -> bool:
+def receive(filepath: str, receive_socket: socket.socket, buffer_size: int) -> bool:
     try:
-        # Receive the number of parts
+        # Receive number of parts
         part_num = int(receive_socket.recv(1024).decode())
-        print(f"Receiving {part_num} parts.")
-        receive_socket.send("ACK".encode())
 
-        # Receive each part and write to file
+        def download_thread(part_filepath: str):
+            try:
+                download_part(part_filepath, receive_socket, buffer_size)
+            except Exception as e:
+                print(f"Error downloading part {part_filepath}: {e}")
+
+        threads = []
         for i in range(part_num):
             part_filepath = f"{filepath}.part{i}"
-            print(f"Receiving part {i}: {part_filepath}")
-            part_size = int(receive_socket.recv(1024).decode())
-            receive_socket.send("ACK".encode())
+            thread = threading.Thread(target=download_thread, args=(part_filepath,))
+            thread.start()
+            threads.append(thread)
 
-            received_size = 0
-            with open(part_filepath, 'wb') as part_file:
-                while received_size < part_size:
-                    data = receive_socket.recv(min(1048576, part_size - received_size))
-                    if not data:
-                        break
-                    part_file.write(data)
-                    received_size += len(data)
-            # Send acknowledgment for each part
-            receive_socket.send("ACK".encode())
-
-        # Merge the parts into the final file
-        print(f"Merging {part_num} parts into {filepath}")
-        merge_success = file_splitter.merge_file(filepath, part_num)
-        for i in range(part_num):
-            part_filepath = f"{filepath}.part{i}"
-            os.remove(part_filepath)
-        
-        if not merge_success:
-            print("Error: Merging file parts failed.")
-            return False
-
-        return True
+        for thread in threads:
+            thread.join()
+        return merge_file(filepath, part_num)
     except Exception as e:
-        print(f"Error during receive: {e}")
+        print(f"Error in receiving file: {e}")
         return False
