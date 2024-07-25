@@ -1,71 +1,62 @@
+import os
 import socket
 import threading
-from file_splitter import split_file, merge_file
 
-def download_part(part_filepath: str, receive_socket: socket.socket, buffer_size: int):
-    with open(part_filepath, 'wb') as part_file:
-        while True:
-            data = receive_socket.recv(buffer_size)
-            if not data:
-                break
-            part_file.write(data)
-
-def upload_part(part_filepath: str, send_socket: socket.socket, buffer_size: int):
-    with open(part_filepath, 'rb') as part_file:
-        while True:
-            data = part_file.read(buffer_size)
-            if not data:
-                break
-            send_socket.sendall(data)
-
-def send(filepath: str, send_socket: socket.socket, buffer_size: int) -> bool:
+def send_chunk(send_socket: socket.socket, chunk: bytes):
     try:
-        # Split file and get number of parts
-        part_num = split_file(filepath)
-        send_socket.sendall(f"{part_num}".encode())
+        send_socket.sendall(chunk)
+    except Exception as e:
+        print(f"send_chunk @ ERR @ {e}")
 
-        def upload_thread(part_filepath: str):
-            try:
-                upload_part(part_filepath, send_socket, buffer_size)
-            except Exception as e:
-                print(f"Error uploading part {part_filepath}: {e}")
+def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -> bool:
+    try:
+        file_size = os.path.getsize(filepath)
+        num_chunks_List = file_size // chunk_size + (1 if file_size % chunk_size != 0 else 0)
 
-        threads = []
-        for i in range(part_num):
-            part_filepath = f"{filepath}.part{i}"
-            thread = threading.Thread(target=upload_thread, args=(part_filepath,))
-            thread.start()
-            threads.append(thread)
+        with open(filepath, 'rb') as f:
+            threads = []
+            for i in range(num_chunks_List):
+                chunk = f.read(chunk_size)
+                thread = threading.Thread(target=send_chunk, args=(send_socket, chunk))
+                thread.start()
+                threads.append(thread)
+            
+            for thread in threads:
+                thread.join()
 
-        for thread in threads:
-            thread.join()        
+        send_chunk(send_socket, b'EOF')  
+
         return True
     except Exception as e:
-        print(f"Error in sending file: {e}")
+        print(f"send @ ERR @ {e}")
         return False
 
-
-def receive(filepath: str, receive_socket: socket.socket, buffer_size: int) -> bool:
+def receive_chunk(receive_socket: socket.socket, chunk_size: int, chunks_List: list, index: int):
     try:
-        # Receive number of parts
-        part_num = int(receive_socket.recv(1024).decode())
-
-        def download_thread(part_filepath: str):
-            try:
-                download_part(part_filepath, receive_socket, buffer_size)
-            except Exception as e:
-                print(f"Error downloading part {part_filepath}: {e}")
-
-        threads = []
-        for i in range(part_num):
-            part_filepath = f"{filepath}.part{i}"
-            thread = threading.Thread(target=download_thread, args=(part_filepath,))
-            thread.start()
-            threads.append(thread)
-
-        for thread in threads:
-            thread.join()
-        return merge_file(filepath, part_num)
+        chunks_List[index] = receive_socket.recv(chunk_size)
     except Exception as e:
-        print(f"Error in receiving file: {e}")
+        print(f"receive_chunk @ ERR @ {e}")
+
+def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -> bool:
+    try:
+        chunks_List = []
+        index = 0
+        while True:
+            chunks_List.append(None)
+            thread = threading.Thread(target=receive_chunk, args=(receive_socket, chunk_size, chunks_List, index))
+            thread.start()
+            thread.join()  # Cái này cần fix, tại này đang nhận được data nào là gộp vô luôn
+            if chunks_List[index] == b'EOF':
+                chunks_List.pop()  
+                break
+            index += 1
+
+        with open(filepath, 'wb') as file:
+            for part in chunks_List:
+                if part:
+                    file.write(part)
+                    file.flush()
+        return True
+    except Exception as e:
+        print(f"receive @ ERR @ {e}")
         return False
