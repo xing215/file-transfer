@@ -6,7 +6,7 @@ def send_chunk(send_socket: socket.socket, chunk: bytes):
     try:
         send_socket.sendall(chunk)
     except Exception as e:
-        print(f"send_chunk @ ERR @ {e}")
+        print(f"send_chunk @\tERR @\t{e}")
 
 def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -> bool:
     try:
@@ -28,14 +28,14 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
 
         return True
     except Exception as e:
-        print(f"send @ ERR @ {e}")
+        print(f"send @\tERR @\t{e}")
         return False
 
 def receive_chunk(receive_socket: socket.socket, chunk_size: int, chunks_List: list, index: int):
     try:
         chunks_List[index] = receive_socket.recv(chunk_size)
     except Exception as e:
-        print(f"receive_chunk @ ERR @ {e}")
+        print(f"receive_chunk @\tERR @\t{e}")
 
 def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -> bool:
     try:
@@ -58,5 +58,5 @@ def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048
                     file.flush()
         return True
     except Exception as e:
-        print(f"receive @ ERR @ {e}")
+        print(f"receive @\tERR @\t{e}")
         return False
