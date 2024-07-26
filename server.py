@@ -20,7 +20,7 @@ class Server:
         if (not '/' in filepath or not '\\' in filepath):
             filepath = Server.DEFAULT_PATH + filepath
         if (file_transfer.receive(conn, filepath, Server.BUFFER_SIZE)):
-            print(f"Server.upload @\tOK @\File received")
+            print(f"Server.upload @\tOK @\tFile received")
             return True
         else:
             print(f"Server.upload @\tERR @\tFile corrupted or not found.")
@@ -30,7 +30,7 @@ class Server:
         if (not '/' in filepath or not '\\' in filepath):
             filepath = Server.DEFAULT_PATH + filepath
         if (file_transfer.send(conn, filepath)):
-            print(f"Server.download @\tOK @\File sent")
+            print(f"Server.download @\tOK @\tFile sent")
             return True
         else:
             print(f"Server.download @\tERR @\tFile corrupted or not found.")
