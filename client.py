@@ -75,7 +75,18 @@ class Client:
         else:
             print(f'Client.delete @\tERR @Unexpected error! Msg = {msg}')
             return False
-    
+    def rename(oldname : str, newname : str) -> bool:
+        Client.client_socket.send(f'REQ@RNM@{oldname}@{newname}'.encode())
+        msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split("@")
+        if (msg[0] == 'OK' and msg[1] == 'RNM'):
+            print(f'Client.rename @\tOK @\t{msg[2]}')
+            return True
+        elif (msg[0] == 'ERR' and msg[1] == 'RNM'):
+            print(f'Client.rename @\tERR @\t{msg[2]}')
+        else:
+            print(f'Client.rename @\tERR @Unexpected error! Msg = {msg}')
+            return False
+
     # For GUI
     def setServerAddress(address : str) -> None:
         Client.SERVER_IP, Client.SERVER_PORT = str.split(':')
@@ -114,6 +125,14 @@ class Client:
                     print(f"Deleted \'{filepath}\' successfully") 
                 else:
                     print(f"Cannot delete \'{filepath}\'. Please check if file exist.")
+            elif (cmd == "RENAME"):
+
+                if (Client.rename(filepath)):
+                    oldname, newname = filepath.strip().split('@')
+                    print(f"Renamed \'{oldname}\' to \'{newname}\'.")
+                else:
+                    print(f"Cannot rename \'{oldname}\'. Please check if file exist.")
+
         print("Disconnected from the server.")
         Client.client_socket.close()
 

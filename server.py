@@ -49,7 +49,16 @@ class Server:
         print(f"Server.delete @\tOK @\tFile deleted.")
         conn.send(f"OK@DEL@\"{filepath}\" not found!".encode())
         return True
-
+    def rename(conn: socket, filepath : str) -> bool:
+        oldname, newname = filepath.strip().split('@')
+        if (not '/' in oldname or not '\\' in oldname):
+            oldname = Server.DEFAULT_PATH + oldname
+        if (not '/' in newname or not '\\' in newname):
+            newname = Server.DEFAULT_PATH + newname
+        if (not os.path.isfile(oldname)):
+            return False
+        os.rename(oldname, newname)
+        return True
 
     def handle_client(conn : socket, addr):
         print(f"Server @\tOK @\t{addr} connected.")
