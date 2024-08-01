@@ -4,98 +4,133 @@ import threading
 import file_transfer
 
 class Server:
-    def __init__(self, SERVER_PORT : int = 9999,BUFFER_SIZE : int = 1048576) -> None:
-        Server.BUFFER_SIZE = BUFFER_SIZE
-        Server.IP = socket.gethostbyname(socket.gethostname())
-        Server.PORT = SERVER_PORT
-        Server.MSG_SIZE = 1024
-        Server.DEFAULT_PATH = "server_data/"
+    def __init__(self, SERVER_PORT: int = 9999, BUFFER_SIZE: int = 1048576) -> None:
+        self.BUFFER_SIZE = BUFFER_SIZE
+        self.IP = socket.gethostbyname(socket.gethostname())
+        self.PORT = SERVER_PORT
+        self.MSG_SIZE = 1024
+        # Lấy đường dẫn tuyệt đối của thư mục chứa tệp server.py
+        self.BASE_PATH = os.path.abspath(os.path.dirname(__file__))
+        # Đặt DEFAULT_PATH là đường dẫn tuyệt đối tới thư mục server_data/
+        self.DEFAULT_PATH = os.path.join(self.BASE_PATH, "server_data/")
 
-        Server.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        Server.server_socket.bind((Server.IP, Server.PORT))
-        Server.server_socket.listen()
-        print(f"Server.__init__ @ \tOK @\tServer is listening on {Server.IP}:{Server.PORT}.")
-    def upload(conn : socket, filepath : str) -> bool:
+        # Tạo thư mục server_data nếu chưa tồn tại
+        if not os.path.exists(self.DEFAULT_PATH):
+            os.makedirs(self.DEFAULT_PATH)
+
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((self.IP, self.PORT))
+        self.server_socket.listen()
+        print(f"Server.__init__ @ \tOK @\tServer is listening on {self.IP}:{self.PORT}.")
+
+    def upload(self, conn: socket.socket, filepath: str) -> bool:
         conn.send(f"OK@SND@Waiting for file...".encode())
-        if (not '/' in filepath or not '\\' in filepath):
-            filepath = Server.DEFAULT_PATH + filepath
-        if (file_transfer.receive(conn, filepath, Server.BUFFER_SIZE)):
+        # Đảm bảo filepath là đường dẫn tuyệt đối
+        if not ('/' in filepath or '\\' in filepath):
+            filepath = os.path.join(self.DEFAULT_PATH, filepath)
+        else:
+            # Nếu filepath có chứa đường dẫn, chỉ lấy tên file
+            filepath = os.path.join(self.DEFAULT_PATH, os.path.basename(filepath))
+        if file_transfer.receive(conn, filepath, self.BUFFER_SIZE):
             print(f"Server.upload @\tOK @\tFile received")
             return True
         else:
             print(f"Server.upload @\tERR @\tFile corrupted or not found.")
             return False
-    def download(conn : socket, filepath : str) -> bool:
+
+    def download(self, conn: socket.socket, filepath: str) -> bool:
         conn.send(f"OK@DWN@Sending file...".encode())
-        if (not '/' in filepath or not '\\' in filepath):
-            filepath = Server.DEFAULT_PATH + filepath
-        if (file_transfer.send(conn, filepath)):
+        # Đảm bảo filepath là đường dẫn tuyệt đối
+        if not ('/' in filepath or '\\' in filepath):
+            filepath = os.path.join(self.DEFAULT_PATH, filepath)
+        else:
+            filepath = os.path.join(self.DEFAULT_PATH, os.path.basename(filepath))
+        if file_transfer.send(conn, filepath):
             print(f"Server.download @\tOK @\tFile sent")
             return True
         else:
             print(f"Server.download @\tERR @\tFile corrupted or not found.")
             return False
 
-    def delete(conn: socket, filepath : str) -> bool:
-        if (not '/' in filepath or not '\\' in filepath):
-            filepath = Server.DEFAULT_PATH + filepath
+    def delete(self, conn: socket.socket, filepath: str) -> bool:
+        if not ('/' in filepath or '\\' in filepath):
+            filepath = os.path.join(self.DEFAULT_PATH, filepath)
+        else:
+            filepath = os.path.join(self.DEFAULT_PATH, os.path.basename(filepath))
 
-        if (not os.path.isfile(filepath)):
+        if not os.path.isfile(filepath):
             print(f"Server.delete @\tERR @\tFile not found!")
             conn.send(f"ERR@DEL@\"{filepath}\" not found!".encode())
             return False
-        
+
         os.remove(filepath)
         print(f"Server.delete @\tOK @\tFile deleted.")
-        conn.send(f"OK@DEL@\"{filepath}\" not found!".encode())
-        return True
-    def rename(conn: socket, filepath : str) -> bool:
-        oldname, newname = filepath.strip().split('@')
-        if (not '/' in oldname or not '\\' in oldname):
-            oldname = Server.DEFAULT_PATH + oldname
-        if (not '/' in newname or not '\\' in newname):
-            newname = Server.DEFAULT_PATH + newname
-        if (not os.path.isfile(oldname)):
-            return False
-        os.rename(oldname, newname)
+        conn.send(f"OK@DEL@\"{filepath}\" deleted.".encode())
         return True
 
-    def handle_client(conn : socket, addr):
+    def rename(self, conn: socket.socket, filenames: str) -> bool:
+        oldname, newname = filenames.strip().split('@')
+        if not ('/' in oldname or '\\' in oldname):
+            oldname = os.path.join(self.DEFAULT_PATH, oldname)
+        else:
+            oldname = os.path.join(self.DEFAULT_PATH, os.path.basename(oldname))
+        if not ('/' in newname or '\\' in newname):
+            newname = os.path.join(self.DEFAULT_PATH, newname)
+        else:
+            newname = os.path.join(self.DEFAULT_PATH, os.path.basename(newname))
+        if not os.path.isfile(oldname):
+            conn.send(f"ERR@REN@\"{oldname}\" not found.".encode())
+            return False
+
+        os.rename(oldname, newname)
+        conn.send(f"OK@REN@\"{oldname}\" renamed to \"{newname}\".".encode())
+        print(f"Server.rename @\tOK @\tFile renamed.")
+        return True
+
+    def handle_client(self, conn: socket.socket, addr):
         print(f"Server @\tOK @\t{addr} connected.")
-        conn.send(f"OK@\nConnection set.\n".encode())
+        # conn.send(f"OK@\nConnection set.\n".encode())
 
         while True:
-            aaaaa = conn.recv(Server.BUFFER_SIZE).decode()
-            print (aaaaa)
-            data, cmd, filepath = aaaaa.split('@')
-            if (data != 'REQ'):
-                continue
-            
-            if (cmd == 'SND'):
-                if (not Server.upload(conn, filepath)):
-                    print(f"Function upload return error.")
-            elif (cmd == 'DWN'):
-                if (not Server.download(conn, filepath)):
-                    print(f"Function download return error.")
-            elif (cmd == 'DEL'):
-                if (not Server.delete(conn, filepath)):
-                    print(f"Function delete return error.")
-            elif (cmd == 'LOGOUT'):
+            try:
+                data = conn.recv(self.MSG_SIZE).decode()
+                if not data:
+                    break
+
+                cmd, filepath = data.split('@', 1)
+                if cmd == 'REQ':
+                    if filepath.startswith('SND'):
+                        if not self.upload(conn, filepath[4:]):
+                            print("Function upload returned an error.")
+                    elif filepath.startswith('DWN'):
+                        if not self.download(conn, filepath[4:]):
+                            print("Function download returned an error.")
+                    elif filepath.startswith('DEL'):
+                        if not self.delete(conn, filepath[4:]):
+                            print("Function delete returned an error.")
+                    elif filepath.startswith('REN'):
+                        if not self.rename(conn, filepath[4:]):
+                            print("Function rename returned an error.")
+                    elif filepath == 'LOGOUT':
+                        break
+                    else:
+                        conn.send("ERR@CMD@Unknown command.".encode())
+                else:
+                    conn.send("ERR@CMD@Invalid request.".encode())
+            except Exception as e:
+                print(f"Server.handle_client @\tERR @\t{e}")
                 break
-            
-            conn.send(f"OK@\n".encode())
-            
+
         print(f"[DISCONNECTED] {addr} disconnected")
         conn.close()
 
-
     def main_func(self) -> None:
         while True:
-            conn, addr = Server.server_socket.accept()
-            thread = threading.Thread(target=Server.handle_client, args=(conn, addr))
+            conn, addr = self.server_socket.accept()
+            thread = threading.Thread(target=self.handle_client, args=(conn, addr))
             thread.start()
             print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     server = Server()
     server.main_func()
