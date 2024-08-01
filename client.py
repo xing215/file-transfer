@@ -24,9 +24,9 @@ class Client:
     def upload(self, filepath: str) -> bool:
         # print(f'Client.upload @\tCALL @\tFunction called.')
         self.client_socket.send(f'REQ@SND@{filepath}'.encode())
-        if (not '/' in filepath or not '\\' in filepath):
-            filepath = self.DEFAULT_PATH + filepath
-        msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split('@')
+        # if (not '/' in filepath or not '\\' in filepath):
+        #     filepath = self.DEFAULT_PATH + filepath
+        msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split('@')    
         if (msg[0] == 'OK' and msg[1] == 'SND'):
             print(f"Client.upload @\tOK @\tFile sending...")
             stat = file_transfer.send(self.client_socket, filepath, self.BUFFER_SIZE)
