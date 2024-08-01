@@ -65,7 +65,9 @@ class Server:
         conn.send(f"OK@\nConnection set.\n".encode())
 
         while True:
-            data, cmd, filepath = conn.recv(Server.BUFFER_SIZE).decode().split('@')
+            aaaaa = conn.recv(Server.BUFFER_SIZE).decode()
+            print (aaaaa)
+            data, cmd, filepath = aaaaa.split('@')
             if (data != 'REQ'):
                 continue
             
