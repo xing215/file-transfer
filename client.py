@@ -2,33 +2,34 @@ import socket
 import file_transfer
 
 class Client:
-    def __init__(self, SERVER_IP = 'localhost', SERVER_PORT = 9999, BUFFER_SIZE : int = 1048576) -> None:
+    def __init__(self, SERVER_IP='localhost', SERVER_PORT=9999, BUFFER_SIZE: int = 1048576) -> None:
         # print(f'Client.__init__ @\tCALL @\tFunction called.')
-        Client.SERVER_IP = SERVER_IP
-        Client.SERVER_PORT = SERVER_PORT
-        # Client.SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
-        Client.BUFFER_SIZE = BUFFER_SIZE
-        Client.MSG_SIZE = 1024
-        Client.DEFAULT_PATH = "client_data/"
+        self.SERVER_IP = SERVER_IP
+        self.SERVER_PORT = SERVER_PORT
+        # self.SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
+        self.BUFFER_SIZE = BUFFER_SIZE
+        self.MSG_SIZE = 1024
+        self.DEFAULT_PATH = "client_data/"
 
-        Client.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            Client.client_socket.connect((SERVER_IP, SERVER_PORT))
+            self.client_socket.connect((SERVER_IP, SERVER_PORT))
         except:
             print(f'Client.__init__ @\tERR @\tConnection Error.')
-            Client.CONNECTED = False
+            self.CONNECTED = False
         else:
             print(f'Client.__init__ @\tOK @\tConnected to server at {SERVER_IP}:{SERVER_PORT}.')
-            Client.CONNECTED = True
-    def upload(filepath : str) -> bool:
+            self.CONNECTED = True
+
+    def upload(self, filepath: str) -> bool:
         # print(f'Client.upload @\tCALL @\tFunction called.')
-        Client.client_socket.send(f'REQ@SND@{filepath}'.encode())
+        self.client_socket.send(f'REQ@SND@{filepath}'.encode())
         if (not '/' in filepath or not '\\' in filepath):
-            filepath = Client.DEFAULT_PATH + filepath
-        msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split('@')
+            filepath = self.DEFAULT_PATH + filepath
+        msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split('@')
         if (msg[0] == 'OK' and msg[1] == 'SND'):
             print(f"Client.upload @\tOK @\tFile sending...")
-            stat = file_transfer.send(Client.client_socket, filepath, Client.BUFFER_SIZE)
+            stat = file_transfer.send(self.client_socket, filepath, self.BUFFER_SIZE)
             if (stat):
                 print(f"Client.upload @\tOK @\tFile sent.")
                 return True
@@ -39,17 +40,18 @@ class Client:
             print(f"Client.upload @\tERR @\tRequest denied. {msg[2]}")
             return False
         else:
-            print(f"Client.upload @\tERR @\tUnexpected error!")
+            print(f"Client.upload @\tERR @\tUnexpected error! {msg}")
             return False
-    def download(filepath : str) -> bool:
+
+    def download(self, filepath: str) -> bool:
         print(f'Client.download @\tCALL @\tFunction called.')
-        Client.client_socket.send(f'REQ@DWN@{filepath}'.encode())
+        self.client_socket.send(f'REQ@DWN@{filepath}'.encode())
         if (not '/' in filepath or not '\\' in filepath):
-            filepath = Client.DEFAULT_PATH + filepath
-        msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split('@')
+            filepath = self.DEFAULT_PATH + filepath
+        msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split('@')
         if (msg[0] == 'OK' and msg[1] == 'DWN'):
             print(f"Client.download @\tOK @\tFile downloading...")
-            stat = file_transfer.receive(Client.client_socket, filepath)
+            stat = file_transfer.receive(self.client_socket, filepath)
             if (stat):
                 print(f"Client.download @\tOK @\tFile downloaded.")
                 return True
@@ -62,10 +64,11 @@ class Client:
         else:
             print(f"Client.download @\tERR @\tUnexpected error!")
             return False
-    def delete(filepath : str) -> bool:
+
+    def delete(self, filepath: str) -> bool:
         # print(f'Client.delete @\tCALL @\tFunction called.')
-        Client.client_socket.send(f'REQ@DEL@{filepath}'.encode())
-        msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split('@')
+        self.client_socket.send(f'REQ@DEL@{filepath}'.encode())
+        msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split('@')
         if (msg[0] == 'OK' and msg[1] == 'DEL'):
             print(f'Client.delete @\tOK @\t{msg[2]}')
             return True
@@ -75,9 +78,10 @@ class Client:
         else:
             print(f'Client.delete @\tERR @Unexpected error! Msg = {msg}')
             return False
-    def rename(oldname : str, newname : str) -> bool:
-        Client.client_socket.send(f'REQ@RNM@{oldname}@{newname}'.encode())
-        msg = Client.client_socket.recv(Client.MSG_SIZE).decode().strip().split("@")
+
+    def rename(self, oldname: str, newname: str) -> bool:
+        self.client_socket.send(f'REQ@RNM@{oldname}@{newname}'.encode())
+        msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split("@")
         if (msg[0] == 'OK' and msg[1] == 'RNM'):
             print(f'Client.rename @\tOK @\t{msg[2]}')
             return True
@@ -88,16 +92,18 @@ class Client:
             return False
 
     # For GUI
-    def setServerAddress(address : str) -> None:
-        Client.SERVER_IP, Client.SERVER_PORT = str.split(':')
-    def setServerAddress(SERVER_IP : str, SERVER_PORT : int) -> None:
+    def setServerAddress(address: str) -> None:
+        ip, port = str.split(':')
+        Client.setServerAddress(ip, int(port))
+
+    def setServerAddress(SERVER_IP: str, SERVER_PORT: int) -> None:
         Client.SERVER_IP = SERVER_IP
         Client.SERVER_PORT = SERVER_PORT
 
     # For debug purpose
     def main_func(self) -> None:
         while True:
-            stat, msg = Client.client_socket.recv(Client.MSG_SIZE).decode().split("@")
+            stat, msg = self.client_socket.recv(self.MSG_SIZE).decode().split("@")
             print(msg)
             if (stat == "DISCONNECTED"):
                 break
@@ -105,38 +111,37 @@ class Client:
             cmd = input("- DOWNLOAD\n- UPLOAD\n- DELETE\n- EXIT\nChoose:")
             cmd = cmd.split()[0].upper()
             if (cmd == 'EXIT'):
-                Client.client_socket.send(f"REQ@LOGOUT@LOGOUT".encode())
+                self.client_socket.send(f"REQ@LOGOUT@LOGOUT".encode())
                 break
 
             filepath = input("Enter filepath: ")
 
             if (cmd == 'UPLOAD'):
-                if (Client.upload(filepath)):
-                    print(f"Uploaded \'{filepath}\' successfully") 
+                if (self.upload(filepath)):
+                    print(f"Uploaded \'{filepath}\' successfully")
                 else:
                     print(f"Cannot upload \'{filepath}\'. Please check if file exist.")
             elif (cmd == 'DOWNLOAD'):
-                if (Client.download(filepath)):
-                    print(f"Downloaded \'{filepath}\' successfully") 
+                if (self.download(filepath)):
+                    print(f"Downloaded \'{filepath}\' successfully")
                 else:
                     print(f"Cannot download \'{filepath}\'. Please check if file exist.")
             elif (cmd == 'DELETE'):
-                if (Client.delete(filepath)):
-                    print(f"Deleted \'{filepath}\' successfully") 
+                if (self.delete(filepath)):
+                    print(f"Deleted \'{filepath}\' successfully")
                 else:
                     print(f"Cannot delete \'{filepath}\'. Please check if file exist.")
             elif (cmd == "RENAME"):
-
-                if (Client.rename(filepath)):
-                    oldname, newname = filepath.strip().split('@')
+                oldname, newname = filepath.strip().split('@')
+                if (self.rename(oldname, newname)):
                     print(f"Renamed \'{oldname}\' to \'{newname}\'.")
                 else:
                     print(f"Cannot rename \'{oldname}\'. Please check if file exist.")
 
         print("Disconnected from the server.")
-        Client.client_socket.close()
+        self.client_socket.close()
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     IP = input("Enter server IP: ")
     PORT = int(input("Enter server port: "))
     client = Client(IP, PORT)
