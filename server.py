@@ -89,7 +89,7 @@ class Server:
 
     def handle_client(self, conn: socket.socket, addr):
         print(f"Server @\tOK @\t{addr} connected.")
-        # conn.send(f"OK@\nConnection set.\n".encode())
+        conn.send(f"OK@\nConnection set.\n".encode())
 
         while True:
             try:
