@@ -2,7 +2,7 @@ import socket
 import file_transfer
 
 class Client:
-    def __init__(self, SERVER_IP='localhost', SERVER_PORT=9999, BUFFER_SIZE: int = 1048576) -> None:
+    def __init__(self, SERVER_IP='localhost', SERVER_PORT=9999, BUFFER_SIZE: int = 100048576) -> None:
         # print(f'Client.__init__ @\tCALL @\tFunction called.')
         self.SERVER_IP = SERVER_IP
         self.SERVER_PORT = SERVER_PORT
@@ -20,6 +20,18 @@ class Client:
         else:
             print(f'Client.__init__ @\tOK @\tConnected to server at {SERVER_IP}:{SERVER_PORT}.')
             self.CONNECTED = True
+        
+    def connect(self):
+        try:
+            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client_socket.connect((self.server_ip, self.server_port))
+            self.CONNECTED = True
+        except Exception as e:
+            print(f"Connection error: {e}")
+            self.CONNECTED = False
+
+    def is_connected(self):
+        return self.CONNECTED
 
     def upload(self, filepath: str) -> bool:
         # print(f'Client.upload @\tCALL @\tFunction called.')
@@ -43,15 +55,13 @@ class Client:
             print(f"Client.upload @\tERR @\tUnexpected error! {msg}")
             return False
 
-    def download(self, filepath: str) -> bool:
+    def download(self, filename: str, save_path: str) -> bool:
         print(f'Client.download @\tCALL @\tFunction called.')
-        self.client_socket.send(f'REQ@DWN@{filepath}'.encode())
-        if (not '/' in filepath or not '\\' in filepath):
-            filepath = self.DEFAULT_PATH + filepath
+        self.client_socket.send(f'REQ@DWN@{filename}'.encode())
         msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split('@')
         if (msg[0] == 'OK' and msg[1] == 'DWN'):
             print(f"Client.download @\tOK @\tFile downloading...")
-            stat = file_transfer.receive(self.client_socket, filepath)
+            stat = file_transfer.receive(self.client_socket, save_path)
             if (stat):
                 print(f"Client.download @\tOK @\tFile downloaded.")
                 return True
@@ -64,6 +74,7 @@ class Client:
         else:
             print(f"Client.download @\tERR @\tUnexpected error!")
             return False
+
 
     def delete(self, filepath: str) -> bool:
         # print(f'Client.delete @\tCALL @\tFunction called.')
@@ -80,16 +91,35 @@ class Client:
             return False
 
     def rename(self, oldname: str, newname: str) -> bool:
-        self.client_socket.send(f'REQ@RNM@{oldname}@{newname}'.encode())
+        self.client_socket.send(f'REQ@REN@{oldname}@{newname}'.encode())
         msg = self.client_socket.recv(self.MSG_SIZE).decode().strip().split("@")
-        if (msg[0] == 'OK' and msg[1] == 'RNM'):
+        if (msg[0] == 'OK' and msg[1] == 'REN'):
             print(f'Client.rename @\tOK @\t{msg[2]}')
             return True
-        elif (msg[0] == 'ERR' and msg[1] == 'RNM'):
+        elif (msg[0] == 'ERR' and msg[1] == 'REN'):
             print(f'Client.rename @\tERR @\t{msg[2]}')
         else:
             print(f'Client.rename @\tERR @Unexpected error! Msg = {msg}')
             return False
+    
+    def list_files(self):
+        try:
+            self.client_socket.sendall("LIST".encode())
+            data = self.client_socket.recv(self.MSG_SIZE).decode()
+            if data.startswith("LIST@"):
+                file_list = data[5:]  # Extract the file list after 'LIST@'
+                if file_list == "No files found.":
+                    print(file_list)
+                    return []
+                else:
+                    print(f"Files received: {file_list}")
+                    return file_list.split("\n")
+            else:
+                print("Unexpected response from the server.")
+                return []
+        except Exception as e:
+            print(f"Error listing files: {e}")
+            return []
 
     # For GUI
     def setServerAddress(address: str) -> None:

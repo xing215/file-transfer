@@ -4,7 +4,7 @@ import threading
 import file_transfer
 
 class Server:
-    def __init__(self, SERVER_PORT: int = 9999, BUFFER_SIZE: int = 1048576) -> None:
+    def __init__(self, SERVER_PORT: int = 9999, BUFFER_SIZE: int = 100048576) -> None:
         self.BUFFER_SIZE = BUFFER_SIZE
         self.IP = socket.gethostbyname(socket.gethostname())
         self.PORT = SERVER_PORT
@@ -87,34 +87,74 @@ class Server:
         print(f"Server.rename @\tOK @\tFile renamed.")
         return True
 
+    def list_files(self, conn: socket.socket):
+        # Send the list of files in the server_data/ directory to the client.
+        try:
+            # Get the list of files in the DEFAULT_PATH directory
+            file_list = os.listdir(self.DEFAULT_PATH)
+            file_list_str = "\n".join(file_list) if file_list else "No files found."
+            
+            # Debugging output to ensure correct file list
+            print(f"Files in server_data: {file_list}")
+
+            # Send the file list to the client
+            conn.send(f"LIST@{file_list_str}".encode())
+        except Exception as e:
+            print(f"Server.list_files @\tERR @\t{e}")
+            conn.send("ERR@LIST@Failed to retrieve file list.".encode())
+
+    def handle_request(self, conn: socket.socket, request: str) -> None:
+        command_parts = request.split('@')
+        if len(command_parts) < 2:
+            conn.send("ERR@CMD@Invalid request.".encode())
+            return
+
+        command = command_parts[1]
+        if command == 'DEL':
+            filename = command_parts[2]
+            try:
+                os.remove(filename) 
+                conn.send("OK@DEL@File deleted.".encode())
+            except Exception as e:
+                conn.send(f"ERR@DEL@Failed to delete file: {e}".encode())
+
     def handle_client(self, conn: socket.socket, addr):
         print(f"Server @\tOK @\t{addr} connected.")
         conn.send(f"OK@\nConnection set.\n".encode())
 
         while True:
             try:
-                data = conn.recv(self.MSG_SIZE).decode()
+                data = conn.recv(self.MSG_SIZE).decode().strip()
+                print(f"Received data: {data}")  # Debugging statement
                 if not data:
                     break
 
-                cmd, filepath = data.split('@', 1)
+                if '@' in data:
+                    cmd, argument = data.split('@', 1)
+                else:
+                    cmd = data
+                    argument = None
+
                 if cmd == 'REQ':
-                    if filepath.startswith('SND'):
-                        if not self.upload(conn, filepath[4:]):
+                    if argument.startswith('SND'):
+                        if not self.upload(conn, argument[4:]):
                             print("Function upload returned an error.")
-                    elif filepath.startswith('DWN'):
-                        if not self.download(conn, filepath[4:]):
+                    elif argument.startswith('DWN'):
+                        if not self.download(conn, argument[4:]):
                             print("Function download returned an error.")
-                    elif filepath.startswith('DEL'):
-                        if not self.delete(conn, filepath[4:]):
+                    elif argument.startswith('DEL'):
+                        if not self.delete(conn, argument[4:]):
                             print("Function delete returned an error.")
-                    elif filepath.startswith('REN'):
-                        if not self.rename(conn, filepath[4:]):
+                    elif argument.startswith('REN'):
+                        filenames = argument[4:]  # Extract filenames
+                        if not self.rename(conn, filenames):
                             print("Function rename returned an error.")
-                    elif filepath == 'LOGOUT':
+                    elif argument == 'LOGOUT':
                         break
                     else:
                         conn.send("ERR@CMD@Unknown command.".encode())
+                elif cmd == 'LIST':  # New command for listing files
+                    self.list_files(conn)
                 else:
                     conn.send("ERR@CMD@Invalid request.".encode())
             except Exception as e:
@@ -124,12 +164,14 @@ class Server:
         print(f"[DISCONNECTED] {addr} disconnected")
         conn.close()
 
+
     def main_func(self) -> None:
         while True:
             conn, addr = self.server_socket.accept()
             thread = threading.Thread(target=self.handle_client, args=(conn, addr))
             thread.start()
             print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
+
 
 if __name__ == "__main__":
     server = Server()
