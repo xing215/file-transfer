@@ -2,9 +2,12 @@ import os
 import socket
 import threading
 
+lock = threading.Lock()
+
 def send_chunk(send_socket: socket.socket, chunk: bytes):
     try:
-        send_socket.sendall(chunk)
+        with lock:
+            send_socket.sendall(chunk)
     except Exception as e:
         print(f"send_chunk @\tERR @\t{e}")
 
@@ -14,7 +17,7 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
         num_chunks_List = file_size // chunk_size + (1 if file_size % chunk_size != 0 else 0)
 
         send_socket.send(str(num_chunks_List).encode())
-
+        
         with open(filepath, 'rb') as f:
             threads = []
             for i in range(num_chunks_List):
