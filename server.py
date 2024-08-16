@@ -103,21 +103,6 @@ class Server:
             print(f"Server.list_files @\tERR @\t{e}")
             conn.send("ERR@LIST@Failed to retrieve file list.".encode())
 
-    def handle_request(self, conn: socket.socket, request: str) -> None:
-        command_parts = request.split('@')
-        if len(command_parts) < 2:
-            conn.send("ERR@CMD@Invalid request.".encode())
-            return
-
-        command = command_parts[1]
-        if command == 'DEL':
-            filename = command_parts[2]
-            try:
-                os.remove(filename) 
-                conn.send("OK@DEL@File deleted.".encode())
-            except Exception as e:
-                conn.send(f"ERR@DEL@Failed to delete file: {e}".encode())
-
     def handle_client(self, conn: socket.socket, addr):
         print(f"Server @\tOK @\t{addr} connected.")
         conn.send(f"OK@\nConnection set.\n".encode())
