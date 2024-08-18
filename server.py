@@ -1,4 +1,5 @@
 import os
+import sys
 import socket
 import threading
 import file_transfer
@@ -159,5 +160,9 @@ class Server:
 
 
 if __name__ == "__main__":
-    server = Server()
+    try:
+        port = int(sys.argv[1])
+        server = Server(port)
+    except Exception as e:
+        server = Server()
     server.main_func()
