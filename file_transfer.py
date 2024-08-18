@@ -30,7 +30,9 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
             
             for thread in threads:
                 thread.join()
-        
+        ACK = send_socket.recv(chunk_size).decode()
+        if (ACK != "OK@filetransfer"):
+            return False
         return True
     except Exception as e:
         print(f"send @\tERR @\t{e}")
@@ -60,6 +62,7 @@ def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048
                 if part:
                     file.flush()
                     file.write(part)
+        receive_socket.send("OK@filetransfer".encode())
         return True
     except Exception as e:
         print(f"receive @\tERR @\t{e}")
