@@ -18,7 +18,7 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
 
         send_socket.send(str(num_chunks_List).encode())
         ACK = send_socket.recv(chunk_size).decode()
-        if ACK != f"OK@{num_chunks_List}"
+        if ACK != f"OK@{num_chunks_List}":
             raise "ACK ERR"
         with open(filepath, 'rb') as f:
             threads = []
