@@ -17,7 +17,9 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
         num_chunks_List = file_size // chunk_size + (1 if file_size % chunk_size != 0 else 0)
 
         send_socket.send(str(num_chunks_List).encode())
-        
+        ACK = send_socket.recv(chunk_size).decode()
+        if ACK != f"OK@{num_chunks_List}"
+            raise "ACK ERR"
         with open(filepath, 'rb') as f:
             threads = []
             for i in range(num_chunks_List):
@@ -43,7 +45,7 @@ def receive_chunk(receive_socket: socket.socket, chunk_size: int, chunks_List: l
 def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -> bool:
     try:
         num_chunks_List = int(receive_socket.recv(chunk_size).decode())
-        
+        receive_socket.send(f"OK@{num_chunks_List}".encode())
         chunks_List = []
         threads = []
         
