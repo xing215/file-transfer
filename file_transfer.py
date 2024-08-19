@@ -20,7 +20,8 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
         send_socket.send(str(num_chunks_List).encode())
         ACK = send_socket.recv(chunk_size).decode()
         if ACK != f"OK@{num_chunks_List}":
-            raise "ACK ERR"
+            print(ACK)
+            return False
         with open(filepath, 'rb') as f:
             threads = []
             for i in range(num_chunks_List):
@@ -28,11 +29,17 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
                 thread = threading.Thread(target=send_chunk, args=(send_socket, chunk))
                 thread.start()
                 threads.append(thread)
+                time.sleep(0.2)
             
             for thread in threads:
                 thread.join()
-        time.sleep(2)
+        ACK = send_socket.recv(chunk_size).decode()
+        if ACK != f"OK@receivedAll":
+            print(ACK)
+            return False
+        time.sleep(1)
         send_socket.send("OK@filetransfer".encode())
+        return True
     except Exception as e:
         print(f"send @\tERR @\t{e}")
         return False
@@ -56,14 +63,18 @@ def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048
             threads.append(thread)
         for thr in threads:
             thr.join()
+        # time.sleep(2)
         with open(filepath, 'wb') as file:
             for part in chunks_List:
                 if part:
                     file.flush()
                     file.write(part)
         time.sleep(2)
+        receive_socket.send("OK@receivedAll".encode())
+        time.sleep(1)
         ACK = receive_socket.recv(chunk_size).decode()
         if (ACK != "OK@filetransfer"):
+            print (ACK)
             return False
         return True
     except Exception as e:
