@@ -160,6 +160,8 @@ class Server:
 
 
 if __name__ == "__main__":
+    if not os.path.exists('server_data'):
+        os.makedirs('server_data')
     try:
         port = int(sys.argv[1])
         server = Server(port)
