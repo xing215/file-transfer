@@ -1,6 +1,7 @@
 import os
 import socket
 import threading
+import time
 
 lock = threading.Lock()
 
@@ -30,10 +31,8 @@ def send(send_socket: socket.socket, filepath: str, chunk_size: int = 1048576) -
             
             for thread in threads:
                 thread.join()
-        ACK = send_socket.recv(chunk_size).decode()
-        if (ACK != "OK@filetransfer"):
-            return False
-        return True
+        time.sleep(2)
+        send_socket.send("OK@filetransfer".encode())
     except Exception as e:
         print(f"send @\tERR @\t{e}")
         return False
@@ -62,7 +61,10 @@ def receive(receive_socket: socket.socket, filepath: str, chunk_size: int = 1048
                 if part:
                     file.flush()
                     file.write(part)
-        receive_socket.send("OK@filetransfer".encode())
+        time.sleep(2)
+        ACK = receive_socket.recv(chunk_size).decode()
+        if (ACK != "OK@filetransfer"):
+            return False
         return True
     except Exception as e:
         print(f"receive @\tERR @\t{e}")
