@@ -6,6 +6,7 @@ A client-server file transfer application built with Python and Tkinter GUI for 
 
 - **University**: Vietnam National University Ho Chi Minh City - University of Science (VNU-HCMUS)
 - **Semester**: 3rd Semester
+- **Course**: Computer Networks
 - **Project Type**: Team Project
 - **Language**: Python
 - **GUI Framework**: Tkinter
